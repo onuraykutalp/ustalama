@@ -12,21 +12,27 @@ datasource db {
 
 // Kullanıcı modeli
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  phone     String?
-  password  String
-  role      UserRole @default(CUSTOMER)
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  phone       String?
+  password    String
+  role        UserRole @default(CUSTOMER)
+  avatar      String?
+  balance     Float    @default(0)
+  cardUserKey String?
+  isPremium   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // İlişkiler
-  customerRequests Request[] @relation("CustomerRequests")
+  customerRequests Request[]     @relation("CustomerRequests")
   providerProfile  ProviderProfile?
   reviews          Review[]
   messages         Message[]
+  payments         Payment[]
+  savedCards       SavedCard[]
+  transactions     Transaction[]
 
   @@map("users")
 }
@@ -158,5 +164,80 @@ model Review {
   provider  ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@map("reviews")
+}
+
+// Ödeme kaydı
+model Payment {
+  id               String        @id @default(cuid())
+  userId           String
+  conversationId   String        @unique
+  paymentId        String?
+  amount           Float
+  paidAmount       Float
+  currency         String        @default("TRY")
+  installment      Int           @default(1)
+  paymentType      PaymentType
+  status           PaymentStatus @default(PENDING)
+  cardLast4        String?
+  cardBrand        String?
+  description      String?
+  errorMessage     String?       @db.Text
+  dataJson         String?       @db.Text
+  ip               String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+
+  @@map("payments")
+}
+
+enum PaymentType {
+  BALANCE_DEPOSIT
+  PREMIUM_PURCHASE
+  SERVICE_PAYMENT
+}
+
+enum PaymentStatus {
+  PENDING
+  AWAITING_3DS
+  SUCCESS
+  FAILED
+}
+
+// Kayıtlı kartlar
+model SavedCard {
+  id            String   @id @default(cuid())
+  userId        String
+  cardToken     String
+  cardAlias     String?
+  cardLast4     String
+  cardBrand     String
+  cardBankName  String?
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_cards")
+}
+
+// İşlem geçmişi
+model Transaction {
+  id            String          @id @default(cuid())
+  userId        String
+  paymentId     String?
+  type          TransactionType
+  amount        Float
+  balanceBefore Float
+  balanceAfter  Float
+  description   String?
+  createdAt     DateTime        @default(now())
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment       Payment?        @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@map("transactions")
 }
 

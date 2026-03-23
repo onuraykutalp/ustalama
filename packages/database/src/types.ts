@@ -19,6 +19,26 @@ export enum RequestStatus {
   CANCELLED = 'CANCELLED'
 }
 
+export enum PaymentType {
+  BALANCE_DEPOSIT = 'BALANCE_DEPOSIT',
+  PREMIUM_PURCHASE = 'PREMIUM_PURCHASE',
+  SERVICE_PAYMENT = 'SERVICE_PAYMENT'
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  AWAITING_3DS = 'AWAITING_3DS',
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED'
+}
+
+export enum TransactionType {
+  DEPOSIT = 'DEPOSIT',
+  WITHDRAWAL = 'WITHDRAWAL',
+  PREMIUM = 'PREMIUM',
+  REFUND = 'REFUND'
+}
+
 // Base interfaces (without relations)
 export interface User {
   id: string
@@ -28,6 +48,9 @@ export interface User {
   password: string
   role: UserRole
   avatar: string | null
+  balance: number
+  cardUserKey: string | null
+  isPremium: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -100,11 +123,59 @@ export interface Review {
 }
 
 // Interfaces with relations (for includes)
+export interface Payment {
+  id: string
+  userId: string
+  conversationId: string
+  paymentId: string | null
+  amount: number
+  paidAmount: number
+  currency: string
+  installment: number
+  paymentType: PaymentType
+  status: PaymentStatus
+  cardLast4: string | null
+  cardBrand: string | null
+  description: string | null
+  errorMessage: string | null
+  dataJson: string | null
+  ip: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface SavedCard {
+  id: string
+  userId: string
+  cardToken: string
+  cardAlias: string | null
+  cardLast4: string
+  cardBrand: string
+  cardBankName: string | null
+  isDefault: boolean
+  createdAt: Date
+}
+
+export interface Transaction {
+  id: string
+  userId: string
+  paymentId: string | null
+  type: TransactionType
+  amount: number
+  balanceBefore: number
+  balanceAfter: number
+  description: string | null
+  createdAt: Date
+}
+
 export interface UserWithRelations extends User {
   customerRequests?: Request[]
   providerProfile?: ProviderProfileWithRelations
   reviews?: Review[]
   messages?: Message[]
+  payments?: Payment[]
+  savedCards?: SavedCard[]
+  transactions?: Transaction[]
 }
 
 export interface ProviderProfileWithRelations extends ProviderProfile {
@@ -255,6 +326,8 @@ export interface PublicUser {
   phone: string | null
   role: UserRole
   avatar: string | null
+  balance: number
+  isPremium: boolean
   createdAt: Date
   updatedAt: Date
 }
