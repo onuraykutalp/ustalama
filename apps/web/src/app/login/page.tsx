@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useAuthStore } from '@/store/useAuthStore'
 
 export default function LoginPage() {
@@ -48,9 +49,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-2xl">T</span>
-            </div>
+            <Image src="/ustalama-logo.png" alt="Ustalama" width={96} height={96} className="rounded-xl" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Hesabına Giriş Yap

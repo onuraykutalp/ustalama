@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function ResetPasswordPage() {
   return (
@@ -83,9 +84,7 @@ function ForgotPasswordForm() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-2xl">U</span>
-            </div>
+            <Image src="/ustalama-logo.png" alt="Ustalama" width={96} height={96} className="rounded-xl" />
           </div>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Şifremi Unuttum</h2>
           <p className="mt-2 text-sm text-gray-600">
@@ -186,9 +185,7 @@ function NewPasswordForm({ token }: { token: string }) {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-2xl">U</span>
-            </div>
+            <Image src="/ustalama-logo.png" alt="Ustalama" width={96} height={96} className="rounded-xl" />
           </div>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Yeni Şifre Belirle</h2>
           <p className="mt-2 text-sm text-gray-600">Yeni şifrenizi aşağıya girin.</p>

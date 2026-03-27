@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useRouter } from 'next/navigation'
@@ -40,9 +41,7 @@ export default function Header() {
             href="/"
             className="flex items-center space-x-3 hover:opacity-90 transition-opacity"
           >
-            <div className="w-11 h-11 bg-gradient-to-br from-indigo-500 via-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-black text-2xl tracking-tighter select-none">U</span>
-            </div>
+            <Image src="/ustalama-logo.png" alt="Ustalama" width={56} height={56} className="rounded-xl" />
             <span className="text-2xl lg:text-3xl font-extrabold text-gray-900 tracking-tight">Ustalama</span>
           </Link>
 
@@ -142,9 +141,7 @@ export default function Header() {
         <div className={`md:hidden fixed top-0 right-0 w-4/5 max-w-xs h-full bg-white shadow-lg z-50 transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex items-center justify-between px-4 py-4 border-b">
             <Link href="/" className="flex items-center space-x-2" onClick={() => setIsMenuOpen(false)}>
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">U</span>
-              </div>
+              <Image src="/ustalama-logo.png" alt="Ustalama" width={48} height={48} className="rounded-lg" />
               <span className="text-xl font-bold text-gray-900">Ustalama</span>
             </Link>
             <button

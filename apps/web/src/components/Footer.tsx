@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Footer() {
   const handleComingSoon = (e: React.MouseEvent) => {
@@ -15,9 +16,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">U</span>
-              </div>
+              <Image src="/ustalama-logo.png" alt="Ustalama" width={52} height={52} className="rounded-lg" />
               <span className="text-2xl font-bold text-white">Ustalama</span>
             </div>
             <p className="text-gray-400 mb-4 max-w-md">

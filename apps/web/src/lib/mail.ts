@@ -37,9 +37,7 @@ function baseTemplate(content: string) {
       <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07);">
         <!-- Header -->
         <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed,#db2777);padding:32px 40px;text-align:center;">
-          <div style="width:48px;height:48px;background:rgba(255,255,255,0.2);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
-            <span style="color:#ffffff;font-weight:900;font-size:24px;">U</span>
-          </div>
+          <img src="${APP_URL}/ustalama-logo.png" alt="Ustalama" width="64" height="64" style="border-radius:12px;margin-bottom:12px;" />
           <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0;">Ustalama</h1>
         </td></tr>
         <!-- Content -->
