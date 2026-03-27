@@ -87,14 +87,14 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" onClick={handleComingSoon} className="hover:text-white transition-colors">
+                <Link href="/gizlilik" className="hover:text-white transition-colors">
                   Gizlilik Politikası
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" onClick={handleComingSoon} className="hover:text-white transition-colors">
+                <Link href="/kullanim-kosullari" className="hover:text-white transition-colors">
                   Kullanım Koşulları
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

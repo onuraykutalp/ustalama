@@ -200,21 +200,13 @@ export default function RegisterPage() {
 
           <p className="text-xs text-center text-gray-500">
             Hesap oluşturarak{' '}
-            <button
-              type="button"
-              onClick={() => alert('Bu sayfa yakında eklenecek')}
-              className="text-blue-600 hover:text-blue-500"
-            >
+            <Link href="/kullanim-kosullari" className="text-blue-600 hover:text-blue-500">
               Kullanım Koşulları
-            </button>
+            </Link>
             {' '}ve{' '}
-            <button
-              type="button"
-              onClick={() => alert('Bu sayfa yakında eklenecek')}
-              className="text-blue-600 hover:text-blue-500"
-            >
+            <Link href="/gizlilik" className="text-blue-600 hover:text-blue-500">
               Gizlilik Politikası
-            </button>
+            </Link>
             &apos;nı kabul etmiş olursunuz.
           </p>
         </form>
