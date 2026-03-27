@@ -1,14 +1,23 @@
 import { apiClient } from './client'
-import type { Category, CreateCategoryDto, UpdateCategoryDto } from '@talepo/database'
+import type { Category, CategoryWithRelations, CreateCategoryDto, UpdateCategoryDto } from '@talepo/database'
+
+export interface GetCategoriesParams {
+  hasServices?: boolean
+}
 
 export const categoriesApi = {
-  async getAll(): Promise<Category[]> {
-    const response = await apiClient.get<Category[]>('/categories')
-    return response.data || []
+  async getAll(params?: GetCategoriesParams): Promise<CategoryWithRelations[]> {
+    const queryParams = new URLSearchParams()
+    if (params?.hasServices) queryParams.append('hasServices', 'true')
+
+    const query = queryParams.toString()
+    const endpoint = `/categories${query ? `?${query}` : ''}`
+    const response = await apiClient.get<CategoryWithRelations[]>(endpoint)
+    return response.data && Array.isArray(response.data) ? response.data : []
   },
 
-  async getBySlug(slug: string): Promise<Category | null> {
-    const response = await apiClient.get<Category>(`/categories?slug=${slug}`)
+  async getBySlug(slug: string): Promise<CategoryWithRelations | null> {
+    const response = await apiClient.get<CategoryWithRelations>(`/categories?slug=${slug}`)
     return response.data || null
   },
 

@@ -22,6 +22,41 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Provider profile'ı bul veya oluştur
+    let providerProfile = await prisma.providerProfile.findUnique({
+      where: { userId: auth.userId },
+      include: {
+        services: {
+          select: {
+            categoryId: true,
+          },
+        },
+      },
+    })
+
+    if (!providerProfile) {
+      providerProfile = await prisma.providerProfile.create({
+        data: {
+          userId: auth.userId,
+        },
+        include: {
+          services: {
+            select: {
+              categoryId: true,
+            },
+          },
+        },
+      })
+    }
+
+    // Provider'ın hizmet kategorilerini al
+    const providerCategoryIds = providerProfile.services.map(service => service.categoryId)
+
+    // Eğer provider'ın hiç hizmeti yoksa, boş array döndür
+    if (providerCategoryIds.length === 0) {
+      return NextResponse.json({ data: [] })
+    }
+
     const { searchParams } = new URL(request.url)
     const categoryId = searchParams.get('categoryId')
     const status = searchParams.get('status') || RequestStatus.PENDING
@@ -29,11 +64,18 @@ export async function GET(request: NextRequest) {
     const where: any = {
       providerId: null, // Provider atanmamış talepler
       status: status as RequestStatus,
+      // Sadece provider'ın hizmet kategorilerindeki fırsatları göster
+      categoryId: {
+        in: providerCategoryIds,
+      },
     }
 
+    // Eğer özel bir kategori filtresi varsa, hem provider'ın kategorilerinde hem de seçilen kategoride olmalı
     if (categoryId) {
-      where.service = {
-        categoryId,
+      if (providerCategoryIds.includes(categoryId)) {
+        where.categoryId = categoryId
+      } else {
+        return NextResponse.json({ data: [] })
       }
     }
 
@@ -53,6 +95,7 @@ export async function GET(request: NextRequest) {
             category: true,
           },
         },
+        category: true,
         messages: {
           take: 1,
           orderBy: {

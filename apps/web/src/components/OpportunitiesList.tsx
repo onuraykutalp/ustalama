@@ -18,106 +18,6 @@ export default function OpportunitiesList() {
     fetchCategories()
   }, [fetchOpportunities, fetchCategories])
 
-  // Dummy data for opportunities (fallback)
-  const dummyOpportunities = [
-    {
-      id: '1',
-      title: 'Ev Temizliği Hizmeti',
-      description: '3+1 daire için haftalık temizlik hizmeti arıyorum. Düzenli olarak her hafta gelinmesini istiyorum.',
-      budget: 2500,
-      location: 'Kadıköy, İstanbul',
-      category: 'Temizlik',
-      customer: {
-        name: 'Ayşe Yılmaz',
-        avatar: null,
-        rating: 4.8
-      },
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 saat önce
-      urgency: 'high',
-      proposalsCount: 3
-    },
-    {
-      id: '2',
-      title: 'Bebek Bakıcısı',
-      description: '6 aylık bebeğim için deneyimli ve güvenilir bir bebek bakıcısı arıyorum. Pazartesi-Cuma 09:00-17:00 saatleri arası.',
-      budget: 15000,
-      location: 'Beşiktaş, İstanbul',
-      category: 'Bakım',
-      customer: {
-        name: 'Mehmet Demir',
-        avatar: null,
-        rating: 4.9
-      },
-      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 saat önce
-      urgency: 'medium',
-      proposalsCount: 7
-    },
-    {
-      id: '3',
-      title: 'Elektrik Tesisat Tamiri',
-      description: 'Evdeki elektrik prizlerinde sorun var. Acil müdahale gerekiyor. Profesyonel bir elektrikçi arıyorum.',
-      budget: 800,
-      location: 'Ümraniye, İstanbul',
-      category: 'Tamir',
-      customer: {
-        name: 'Zeynep Kaya',
-        avatar: null,
-        rating: 4.7
-      },
-      createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 saat önce
-      urgency: 'high',
-      proposalsCount: 1
-    },
-    {
-      id: '4',
-      title: 'Bahçe Düzenleme',
-      description: '50m² bahçe için peyzaj ve düzenleme hizmeti. Çim ekimi, çiçek dikimi ve sulama sistemi kurulumu.',
-      budget: 5000,
-      location: 'Ataşehir, İstanbul',
-      category: 'Bahçıvanlık',
-      customer: {
-        name: 'Ali Çelik',
-        avatar: null,
-        rating: 5.0
-      },
-      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 gün önce
-      urgency: 'low',
-      proposalsCount: 5
-    },
-    {
-      id: '5',
-      title: 'Özel Ders (Matematik)',
-      description: 'Lise 2 öğrencisi için matematik özel dersi. Haftada 2 gün, 2 saat. Uzun vadeli çalışma planlanıyor.',
-      budget: 2000,
-      location: 'Şişli, İstanbul',
-      category: 'Eğitim',
-      customer: {
-        name: 'Fatma Öz',
-        avatar: null,
-        rating: 4.6
-      },
-      createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 saat önce
-      urgency: 'medium',
-      proposalsCount: 2
-    },
-    {
-      id: '6',
-      title: 'Klima Bakımı ve Temizliği',
-      description: '3 adet split klima için bakım ve temizlik hizmeti. Yıllık bakım sözleşmesi yapılabilir.',
-      budget: 1200,
-      location: 'Bakırköy, İstanbul',
-      category: 'Tamir',
-      customer: {
-        name: 'Can Yücel',
-        avatar: null,
-        rating: 4.8
-      },
-      createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 saat önce
-      urgency: 'low',
-      proposalsCount: 4
-    }
-  ]
-
   // Categories listesi
   const categoryList = useMemo(() => {
     return ['all', ...categories.map(cat => cat.name)]
@@ -131,7 +31,7 @@ export default function OpportunitiesList() {
       description: opp.description,
       budget: opp.budget || 0,
       location: opp.location || 'Konum belirtilmemiş',
-      category: opp.service?.category?.name || 'Genel',
+      category: opp.category?.name || opp.service?.category?.name || 'Genel',
       customer: {
         name: opp.customer?.name || 'İsimsiz',
         avatar: opp.customer?.avatar || null,
@@ -145,8 +45,7 @@ export default function OpportunitiesList() {
 
   // Filter and sort opportunities
   const filteredOpportunities = useMemo(() => {
-    const opps = displayOpportunities.length > 0 ? displayOpportunities : dummyOpportunities
-    return opps
+    return displayOpportunities
       .filter(opp => {
         const matchesCategory = selectedCategory === 'all' || opp.category === selectedCategory
         const matchesSearch = opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

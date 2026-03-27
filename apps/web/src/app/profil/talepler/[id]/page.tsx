@@ -1,9 +1,10 @@
-import { generateStaticParams } from './generateStaticParams'
 import RequestDetailClient from './RequestDetailClient'
 
-export { generateStaticParams }
-
-export default function RequestDetailPage({ params }: { params: { id: string } }) {
-  return <RequestDetailClient id={params.id} />
+export default async function RequestDetailPage({
+  params
+}: {
+  params: Promise<{ id: string }> | { id: string }
+}) {
+  const resolvedParams = await Promise.resolve(params)
+  return <RequestDetailClient id={resolvedParams.id} />
 }
-

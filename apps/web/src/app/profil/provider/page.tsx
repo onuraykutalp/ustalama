@@ -17,6 +17,7 @@ import OpportunitiesList from '@/components/OpportunitiesList'
 import MessagesList from '@/components/MessagesList'
 
 export default function ProviderProfilePage() {
+  // Note: PremiumSubscription, CreditCardManagement, PurchaseCredits are handled via /profil/bakiye and /profil/premium pages
   const router = useRouter()
   const { user, isAuthenticated, fetchProfile } = useAuthStore()
   const { selectedProvider, getProviderById } = useProvidersStore()
@@ -131,6 +132,23 @@ export default function ProviderProfilePage() {
                 </div>
                 <h3 className="font-bold text-gray-900 mb-1">{user.name || 'İsimsiz'}</h3>
                 <p className="text-sm text-gray-600 mb-2">{user.email}</p>
+                {Boolean(user.isPremium) && (!user.premiumExpiresAt || new Date(user.premiumExpiresAt) > new Date()) ? (
+                  <div className="mb-2">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full text-xs font-bold mb-2">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      PREMIUM
+                    </span>
+                  </div>
+                ) : (
+                  user.credits !== undefined && (
+                    <div className="mb-2">
+                      <p className="text-xs text-gray-500">Kredi</p>
+                      <p className="text-lg font-bold text-blue-600">{user.credits}</p>
+                    </div>
+                  )
+                )}
                 {providerProfile?.isVerified && (
                   <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium mb-3">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -244,6 +262,27 @@ export default function ProviderProfilePage() {
                   </svg>
                   <span className="font-medium">Mesajlarım</span>
                 </button>
+                <Link
+                  href="/profil/bakiye"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-gray-700 hover:bg-gray-100"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">Bakiye ve Ödemeler</span>
+                </Link>
+                <Link
+                  href="/profil/premium"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-gray-700 hover:bg-gray-100 relative"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                  <span className="font-medium">Premium</span>
+                  {user && Boolean(user.isPremium) && (!user.premiumExpiresAt || new Date(user.premiumExpiresAt) > new Date()) && (
+                    <span className="ml-auto px-2 py-1 bg-yellow-500 text-white text-xs rounded-full">Aktif</span>
+                  )}
+                </Link>
               </nav>
             </div>
           </aside>

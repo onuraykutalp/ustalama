@@ -34,9 +34,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Tüm kategorileri getir
+    const hasServices = searchParams.get('hasServices') === 'true'
+
+    let where: any = {}
+
+    // Eğer hasServices=true ise, sadece en az bir service'e sahip kategorileri getir
+    if (hasServices) {
+      where = {
+        services: {
+          some: {},
+        },
+      }
+    }
+
     const categories = await prisma.category.findMany({
+      where,
       include: {
-        services: true,
+        services: {
+          select: {
+            id: true,
+          },
+        },
       },
       orderBy: {
         name: 'asc',

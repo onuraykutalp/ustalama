@@ -6,10 +6,10 @@ import CategoryCard from './CategoryCard'
 import { useCategoriesStore } from '@/store/useCategoriesStore'
 
 export default function CategoriesSection() {
-  const { categories, fetchCategories, loading } = useCategoriesStore()
+  const { categories, fetchCategories, loading, error } = useCategoriesStore()
 
   useEffect(() => {
-    fetchCategories()
+    fetchCategories({ hasServices: true })
   }, [fetchCategories])
 
   // İlk 8 kategoriyi göster
@@ -38,11 +38,25 @@ export default function CategoriesSection() {
             <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             <p className="mt-4 text-gray-600">Kategoriler yükleniyor...</p>
           </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">Kategoriler yüklenirken bir hata oluştu: {error}</p>
+            <button
+              onClick={() => fetchCategories({ hasServices: true })}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Tekrar Dene
+            </button>
+          </div>
+        ) : displayedCategories.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 mb-4">Henüz kategori bulunmuyor.</p>
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {displayedCategories.map((category) => (
-                <CategoryCard key={category.name} {...category} image="/badana.jpg" />
+                <CategoryCard key={category.name} {...category} />
               ))}
             </div>
 

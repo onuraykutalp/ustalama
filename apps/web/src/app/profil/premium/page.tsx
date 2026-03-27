@@ -1,42 +1,146 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-// Static export - no auth store
+import { useAuthStore } from '@/store/useAuthStore'
+import { usePaymentStore } from '@/store/usePaymentStore'
 
 export default function PremiumPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
+      <PremiumPageContent />
+    </Suspense>
+  )
+}
+
+function PremiumPageContent() {
   const router = useRouter()
-  // Static export - no authentication
-  const isAuthenticated = false
-  const [isPremium, setIsPremium] = useState(false) // Dummy state - API'den gelecek
-  const [isProcessing, setIsProcessing] = useState(false)
+  const searchParams = useSearchParams()
+  const { user, token, isAuthenticated } = useAuthStore()
+  const {
+    cards, isPremium, loading, error,
+    fetchCards, fetchBalance,
+    initializePayment, payWithSavedCard,
+    clearError,
+  } = usePaymentStore()
+
   const [selectedCard, setSelectedCard] = useState('')
   const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [show3DS, setShow3DS] = useState(false)
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const [cardData, setCardData] = useState({
     cardNumber: '',
     expiryDate: '',
     cvv: '',
     holderName: '',
-    saveCard: false
+    saveCard: false,
   })
 
-  // Dummy saved cards
-  const savedCards = [
-    {
-      id: '1',
-      last4: '4242',
-      brand: 'visa',
-      expiryMonth: '12',
-      expiryYear: '2025',
-      holderName: 'Ahmet Yılmaz',
-      isDefault: true
-    }
-  ]
-
-  // Static export - no redirect needed, just show content
-
   const premiumPrice = 499
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      router.push('/login')
+      return
+    }
+    fetchBalance(token)
+    fetchCards(token)
+  }, [isAuthenticated, token])
+
+  // URL'den gelen ödeme sonuçlarını kontrol et
+  useEffect(() => {
+    const payment = searchParams.get('payment')
+    if (payment === 'success') {
+      setNotification({ type: 'success', message: 'Premium üyelik başarıyla aktif edildi!' })
+      if (token) {
+        fetchBalance(token)
+        fetchCards(token)
+      }
+    } else if (payment === 'failed') {
+      const reason = searchParams.get('reason') || 'Bilinmeyen hata'
+      setNotification({ type: 'error', message: `Ödeme başarısız: ${decodeURIComponent(reason)}` })
+    }
+  }, [searchParams])
+
+  // Varsayılan kartı seç
+  useEffect(() => {
+    const defaultCard = cards.find(c => c.isDefault)
+    if (defaultCard) setSelectedCard(defaultCard.id)
+  }, [cards])
+
+  if (!isAuthenticated) return null
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
+    const parts = []
+    for (let i = 0; i < v.length && i < 16; i += 4) parts.push(v.substring(i, i + 4))
+    return parts.join(' ')
+  }
+
+  const formatExpiryDate = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
+    if (v.length >= 2) return v.substring(0, 2) + '/' + v.substring(2, 4)
+    return v
+  }
+
+  const handlePayWithSavedCard = async () => {
+    if (!selectedCard || !token) return
+    setIsProcessing(true)
+
+    const result = await payWithSavedCard(token, {
+      cardId: selectedCard,
+      amount: premiumPrice,
+      paymentType: 'PREMIUM_PURCHASE',
+      description: 'Premium Üyelik',
+    })
+
+    setIsProcessing(false)
+    if (result.status) {
+      window.location.href = '/profil/premium?payment=success'
+    } else {
+      setNotification({ type: 'error', message: result.error || 'Ödeme başarısız' })
+    }
+  }
+
+  const handlePayWithNewCard = async () => {
+    if (!cardData.cardNumber || !cardData.expiryDate || !cardData.cvv || !cardData.holderName || !token) return
+    setIsProcessing(true)
+
+    const [expMonth, expYear] = cardData.expiryDate.split('/')
+    const result = await initializePayment(token, {
+      cardHolderName: cardData.holderName,
+      cardNumber: cardData.cardNumber.replace(/\s/g, ''),
+      expireMonth: expMonth,
+      expireYear: '20' + expYear,
+      cvc: cardData.cvv,
+      amount: premiumPrice,
+      paymentType: 'PREMIUM_PURCHASE',
+      saveCard: cardData.saveCard,
+      description: 'Premium Üyelik',
+    })
+
+    if (result.status && result.htmlContent) {
+      setShow3DS(true)
+      setTimeout(() => {
+        if (iframeRef.current) {
+          const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document
+          if (doc) {
+            doc.open()
+            doc.write(result.htmlContent!)
+            doc.close()
+          }
+        }
+      }, 100)
+    } else {
+      setIsProcessing(false)
+      if (!result.status) {
+        setNotification({ type: 'error', message: result.error || 'Ödeme başlatılamadı' })
+      }
+    }
+  }
 
   const premiumFeatures = [
     {
@@ -95,44 +199,29 @@ export default function PremiumPage() {
     }
   ]
 
-  const handleSubscribe = async () => {
-    if (!selectedCard && !cardData.cardNumber) {
-      alert('Lütfen bir ödeme yöntemi seçin veya yeni kart ekleyin')
-      return
-    }
-
-    setIsProcessing(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setIsPremium(true)
-    setIsProcessing(false)
-    setShowPaymentForm(false)
-    alert('Premium üyelik başarıyla aktif edildi!')
-  }
-
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
-    const matches = v.match(/\d{4,16}/g)
-    const match = matches && matches[0] || ''
-    const parts = []
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4))
-    }
-    if (parts.length) {
-      return parts.join(' ')
-    } else {
-      return v
-    }
-  }
-
-  const formatExpiryDate = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
-    if (v.length >= 2) {
-      return v.substring(0, 2) + '/' + v.substring(2, 4)
-    }
-    return v
+  // 3DS iframe ekranı
+  if (show3DS) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <div className="bg-white shadow-sm sticky top-0 z-50">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <Link href="/profil" className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Profil Sayfasına Dön
+            </Link>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">3D Secure Doğrulama</h2>
+            <p className="text-gray-600 mb-4">Bankanızın güvenlik sayfasında işlemi onaylayın.</p>
+            <iframe ref={iframeRef} className="w-full h-[500px] border-2 border-gray-200 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -153,6 +242,16 @@ export default function PremiumPage() {
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Notification */}
+        {notification && (
+          <div className={`mb-6 p-4 rounded-xl flex items-center justify-between ${notification.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'}`}>
+            <p className="font-medium">{notification.message}</p>
+            <button onClick={() => setNotification(null)} className="ml-4 text-gray-500 hover:text-gray-700">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        )}
+
         {/* Premium Status Banner */}
         {isPremium && (
           <div className="mb-8 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 rounded-2xl shadow-xl p-6 text-white">
@@ -269,13 +368,13 @@ export default function PremiumPage() {
                 <div>
                   {!showPaymentForm ? (
                     <div className="space-y-4">
-                      {savedCards.length > 0 && (
+                      {cards.length > 0 && (
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700 mb-3">
                             Kayıtlı Kartlarınız
                           </label>
                           <div className="space-y-2">
-                            {savedCards.map((card) => (
+                            {cards.map((card) => (
                               <label
                                 key={card.id}
                                 className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
@@ -292,22 +391,27 @@ export default function PremiumPage() {
                                   onChange={(e) => setSelectedCard(e.target.value)}
                                   className="w-5 h-5 text-blue-600 focus:ring-blue-500"
                                 />
-                                <div className="ml-4 flex items-center gap-3">
-                                  <div className={`w-12 h-8 rounded flex items-center justify-center ${
-                                    card.brand === 'visa' ? 'bg-blue-600' : 'bg-red-600'
-                                  }`}>
-                                    <span className="text-white font-bold text-xs">
-                                      {card.brand === 'visa' ? 'VISA' : 'MC'}
-                                    </span>
+                                <div className="ml-4 flex-1 flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-12 h-8 rounded flex items-center justify-center ${
+                                      card.cardBrand?.includes('VISA') ? 'bg-blue-600' : 'bg-red-600'
+                                    }`}>
+                                      <span className="text-white font-bold text-xs">
+                                        {card.cardBrand?.includes('VISA') ? 'VISA' : 'MC'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-gray-900">
+                                        •••• •••• •••• {card.cardLast4}
+                                      </p>
+                                      <p className="text-sm text-gray-500">
+                                        {card.cardAlias} {card.cardBankName ? `• ${card.cardBankName}` : ''}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <p className="font-semibold text-gray-900">
-                                      •••• •••• •••• {card.last4}
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                      {card.expiryMonth}/{card.expiryYear}
-                                    </p>
-                                  </div>
+                                  {card.isDefault && (
+                                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Varsayılan</span>
+                                  )}
                                 </div>
                               </label>
                             ))}
@@ -327,25 +431,27 @@ export default function PremiumPage() {
                         </div>
                       </button>
 
-                      <button
-                        onClick={handleSubscribe}
-                        disabled={!selectedCard || isProcessing}
-                        className="w-full px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        {isProcessing ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            İşleniyor...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.363 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                            Premium Üye Ol - {premiumPrice} ₺
-                          </>
-                        )}
-                      </button>
+                      {cards.length > 0 && (
+                        <button
+                          onClick={handlePayWithSavedCard}
+                          disabled={!selectedCard || isProcessing}
+                          className="w-full px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          {isProcessing ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              İşleniyor...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.363 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                              Premium Üye Ol - {premiumPrice} ₺
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4 p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
@@ -398,9 +504,9 @@ export default function PremiumPage() {
                           <input
                             type="text"
                             value={cardData.cvv}
-                            onChange={(e) => setCardData({ ...cardData, cvv: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                            onChange={(e) => setCardData({ ...cardData, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                             placeholder="123"
-                            maxLength={3}
+                            maxLength={4}
                             required
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
@@ -415,7 +521,7 @@ export default function PremiumPage() {
                           type="text"
                           value={cardData.holderName}
                           onChange={(e) => setCardData({ ...cardData, holderName: e.target.value.toUpperCase() })}
-                          placeholder="AHMET YILMAZ"
+                          placeholder="AD SOYAD"
                           required
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
@@ -432,7 +538,7 @@ export default function PremiumPage() {
                       </label>
 
                       <button
-                        onClick={handleSubscribe}
+                        onClick={handlePayWithNewCard}
                         disabled={!cardData.cardNumber || !cardData.expiryDate || !cardData.cvv || !cardData.holderName || isProcessing}
                         className="w-full px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
@@ -461,7 +567,7 @@ export default function PremiumPage() {
                     <div>
                       <p className="font-semibold text-green-900 mb-1">Güvenli Ödeme</p>
                       <p className="text-sm text-green-700">
-                        Tüm ödemeleriniz SSL ile şifrelenir ve güvenli bir şekilde işlenir. 7 gün içinde iade garantisi.
+                        Tüm ödemeleriniz 3D Secure ve SSL ile şifrelenir. iyzico altyapısı ile güvenle işlenir. 7 gün içinde iade garantisi.
                       </p>
                     </div>
                   </div>
@@ -515,4 +621,3 @@ export default function PremiumPage() {
     </div>
   )
 }
-

@@ -14,7 +14,18 @@ export async function GET(request: NextRequest) {
 
     const where: any = {}
     if (customerId) where.customerId = customerId
-    if (providerId) where.providerId = providerId
+    if (providerId) {
+      // providerId parametresi providerProfile.userId olabilir
+      // Önce providerProfile'ı bul
+      const providerProfile = await prisma.providerProfile.findFirst({
+        where: { userId: providerId },
+      })
+      if (providerProfile) {
+        where.providerId = providerProfile.id
+      } else {
+        where.providerId = providerId
+      }
+    }
     if (status) where.status = status as RequestStatus
     if (opportunities) where.providerId = null
 
@@ -89,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { serviceId, title, description, budget, location } = body
+    const { serviceId, categoryId, title, description, budget, location } = body
 
     if (!title || !description) {
       return NextResponse.json(
@@ -98,10 +109,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!categoryId) {
+      return NextResponse.json(
+        { error: 'Hizmet kategorisi seçilmelidir' },
+        { status: 400 }
+      )
+    }
+
     const requestData = await prisma.request.create({
       data: {
         customerId: auth.userId,
         serviceId: serviceId || null,
+        categoryId: categoryId || null,
         title,
         description,
         budget: budget || null,
@@ -122,6 +141,7 @@ export async function POST(request: NextRequest) {
             category: true,
           },
         },
+        category: true,
       },
     })
 

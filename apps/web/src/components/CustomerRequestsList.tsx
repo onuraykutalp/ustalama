@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { RequestStatus } from '@talepo/database'
 import type { RequestWithRelations } from '@talepo/database'
 import { useRequestsStore } from '@/store/useRequestsStore'
@@ -14,110 +15,36 @@ interface CustomerRequestsListProps {
 export default function CustomerRequestsList({ requests: initialRequests = [] }: CustomerRequestsListProps) {
   const { user } = useAuthStore()
   const { requests: storeRequests, fetchRequests, createRequest, updateRequest, deleteRequest, loading } = useRequestsStore()
-  const { categories, fetchCategories } = useCategoriesStore()
+  const { categories, fetchCategories, loading: categoriesLoading, error: categoriesError } = useCategoriesStore()
   const [requests, setRequests] = useState<RequestWithRelations[]>(initialRequests)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingRequest, setEditingRequest] = useState<RequestWithRelations | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Kategorileri component mount olduğunda yükle
   useEffect(() => {
     fetchCategories()
+  }, [fetchCategories])
+
+  // Requests'i user id değiştiğinde yükle
+  useEffect(() => {
     if (user?.id) {
       fetchRequests({ customerId: user.id })
     }
-  }, [fetchCategories, fetchRequests, user])
+  }, [user?.id, fetchRequests])
 
   // Store'dan gelen requests'i kullan
   useEffect(() => {
     if (storeRequests.length > 0) {
       setRequests(storeRequests as RequestWithRelations[])
+    } else if (initialRequests.length > 0) {
+      setRequests(initialRequests)
     }
-  }, [storeRequests])
+  }, [storeRequests, initialRequests])
 
-  // Dummy requests if none provided
-  const dummyRequests = (requests.length === 0 ? [
-    {
-      id: '1',
-      customerId: 'user1',
-      providerId: null,
-      serviceId: null,
-      title: 'Ev Temizliği İhtiyacı',
-      description: '3+1 daire için haftalık temizlik hizmeti arıyorum. Düzenli olarak her hafta gelinmesini istiyorum.',
-      status: RequestStatus.PENDING as RequestStatus,
-      budget: 2500,
-      location: 'Kadıköy, İstanbul',
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      completedAt: null,
-      customer: {
-        id: 'user1',
-        email: 'user@example.com',
-        name: 'Ahmet Yılmaz',
-        phone: null,
-        password: '',
-        role: 'CUSTOMER' as any,
-        avatar: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      provider: undefined,
-      service: undefined,
-      messages: [],
-      reviews: []
-    },
-    {
-      id: '2',
-      customerId: 'user1',
-      providerId: 'provider1',
-      serviceId: null,
-      title: 'Elektrik Tamiri',
-      description: 'Evdeki elektrik prizlerinde sorun var. Acil müdahale gerekiyor.',
-      status: RequestStatus.ACCEPTED as RequestStatus,
-      budget: 800,
-      location: 'Ümraniye, İstanbul',
-      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      completedAt: null,
-      customer: {
-        id: 'user1',
-        email: 'user@example.com',
-        name: 'Ahmet Yılmaz',
-        phone: null,
-        password: '',
-        role: 'CUSTOMER' as any,
-        avatar: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      provider: {
-        id: 'provider1',
-        userId: 'provider1',
-        bio: null,
-        rating: 4.8,
-        totalJobs: 10,
-        isVerified: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        user: {
-          id: 'provider1',
-          email: 'provider@example.com',
-          name: 'Mehmet Demir',
-          phone: null,
-          password: '',
-          role: 'PROVIDER' as any,
-          avatar: null,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      },
-      service: undefined,
-      messages: [],
-      reviews: []
-    }
-  ] : []) as RequestWithRelations[]
-
-  const displayRequests = requests.length > 0 ? requests : dummyRequests
+  // Only use real API data, no dummy data
+  const displayRequests = requests.length > 0 ? requests : []
 
   const [formData, setFormData] = useState({
     title: '',
@@ -146,7 +73,8 @@ export default function CustomerRequestsList({ requests: initialRequests = [] }:
     try {
       await createRequest({
         customerId: user.id,
-        serviceId: formData.categoryId || null,
+        serviceId: null,
+        categoryId: formData.categoryId || null,
         title: formData.title,
         description: formData.description,
         budget: formData.budget ? parseFloat(formData.budget) : null,
@@ -173,8 +101,20 @@ export default function CustomerRequestsList({ requests: initialRequests = [] }:
       description: request.description,
       budget: request.budget?.toString() || '',
       location: request.location || '',
-      categoryId: ''
+      categoryId: request.categoryId || request.service?.categoryId || ''
     })
+    // Kategoriler yüklenmemişse tekrar yükle
+    if (categories.length === 0 && !categoriesLoading) {
+      fetchCategories()
+    }
+    setShowAddForm(true)
+  }
+
+  const handleAddRequest = () => {
+    // Kategoriler yüklenmemişse tekrar yükle
+    if (categories.length === 0 && !categoriesLoading) {
+      fetchCategories()
+    }
     setShowAddForm(true)
   }
 
@@ -189,6 +129,7 @@ export default function CustomerRequestsList({ requests: initialRequests = [] }:
         description: formData.description,
         budget: formData.budget ? parseFloat(formData.budget) : null,
         location: formData.location || null,
+        categoryId: formData.categoryId || null,
       })
       
       // Listeyi yeniden fetch et
@@ -273,7 +214,7 @@ export default function CustomerRequestsList({ requests: initialRequests = [] }:
         </div>
         {!showAddForm && (
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={handleAddRequest}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold shadow-lg flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,6 +269,47 @@ export default function CustomerRequestsList({ requests: initialRequests = [] }:
                 placeholder="İhtiyacınızı detaylı bir şekilde açıklayın..."
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hizmet Kategorisi *
+              </label>
+              {categoriesLoading ? (
+                <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
+                  <p className="text-sm text-gray-500">Kategoriler yükleniyor...</p>
+                </div>
+              ) : categoriesError ? (
+                <div className="w-full px-4 py-3 border border-red-300 rounded-lg bg-red-50">
+                  <p className="text-sm text-red-600">{categoriesError}</p>
+                  <button
+                    type="button"
+                    onClick={() => fetchCategories()}
+                    className="mt-2 text-xs text-red-700 hover:text-red-900 underline"
+                  >
+                    Tekrar Dene
+                  </button>
+                </div>
+              ) : categories.length === 0 ? (
+                <div className="w-full px-4 py-3 border border-yellow-300 rounded-lg bg-yellow-50">
+                  <p className="text-sm text-yellow-600">Henüz kategori bulunmuyor.</p>
+                </div>
+              ) : (
+                <select
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Kategori Seçin</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-gray-500 mt-1">İhtiyacınızın hangi kategoriye ait olduğunu seçin</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -442,7 +424,7 @@ export default function CustomerRequestsList({ requests: initialRequests = [] }:
           </p>
           {!showAddForm && (
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={handleAddRequest}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold shadow-lg"
             >
               İlk İş İlanını Oluştur
@@ -470,6 +452,7 @@ function RequestCard({
   statusLabels: Record<RequestStatus, string>
   formatTimeAgo: (date: Date | string) => string
 }) {
+  const router = useRouter()
   return (
     <div className="group relative bg-gradient-to-br from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 overflow-hidden">
       <div className="p-6">
@@ -544,17 +527,25 @@ function RequestCard({
           )}
           {request.provider && (
             <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.location.href = `/profil/talepler/${request.id}`
-                }
-              }}
+              onClick={() => router.push(`/profil/talepler/${request.id}`)}
               className="flex-1 px-4 py-2 bg-green-50 text-green-600 rounded-lg font-medium hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               Mesajlaş
+            </button>
+          )}
+          {!request.provider && (
+            <button
+              onClick={() => router.push(`/profil/talepler/${request.id}`)}
+              className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Detayları Görüntüle
             </button>
           )}
         </div>

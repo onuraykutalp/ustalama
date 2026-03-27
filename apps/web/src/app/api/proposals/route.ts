@@ -14,16 +14,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Provider profile'ı bul
-    const providerProfile = await prisma.providerProfile.findUnique({
+    // Provider profile'ı bul veya oluştur
+    let providerProfile = await prisma.providerProfile.findUnique({
       where: { userId: auth.userId },
     })
 
     if (!providerProfile) {
-      return NextResponse.json(
-        { error: 'Hizmet sağlayıcı profili bulunamadı' },
-        { status: 404 }
-      )
+      providerProfile = await prisma.providerProfile.create({
+        data: {
+          userId: auth.userId,
+        },
+      })
     }
 
     const { searchParams } = new URL(request.url)
@@ -47,6 +48,18 @@ export async function GET(request: NextRequest) {
             email: true,
             avatar: true,
             phone: true,
+          },
+        },
+        provider: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+              },
+            },
           },
         },
         service: {
@@ -108,16 +121,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Provider profile'ı bul
-    const providerProfile = await prisma.providerProfile.findUnique({
+    // Provider profile'ı bul veya oluştur
+    let providerProfile = await prisma.providerProfile.findUnique({
       where: { userId: auth.userId },
     })
 
     if (!providerProfile) {
-      return NextResponse.json(
-        { error: 'Hizmet sağlayıcı profili bulunamadı' },
-        { status: 404 }
-      )
+      providerProfile = await prisma.providerProfile.create({
+        data: {
+          userId: auth.userId,
+        },
+      })
     }
 
     // Request'i bul

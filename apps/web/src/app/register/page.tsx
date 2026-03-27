@@ -76,7 +76,7 @@ export default function RegisterPage() {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Zaten hesabın var mı?{' '}
-            <Link href="/giris" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
               Giriş yap
             </Link>
           </p>
@@ -200,13 +200,21 @@ export default function RegisterPage() {
 
           <p className="text-xs text-center text-gray-500">
             Hesap oluşturarak{' '}
-            <Link href="/kullanim-kosullari" className="text-blue-600 hover:text-blue-500">
+            <button
+              type="button"
+              onClick={() => alert('Bu sayfa yakında eklenecek')}
+              className="text-blue-600 hover:text-blue-500"
+            >
               Kullanım Koşulları
-            </Link>
+            </button>
             {' '}ve{' '}
-            <Link href="/gizlilik" className="text-blue-600 hover:text-blue-500">
+            <button
+              type="button"
+              onClick={() => alert('Bu sayfa yakında eklenecek')}
+              className="text-blue-600 hover:text-blue-500"
+            >
               Gizlilik Politikası
-            </Link>
+            </button>
             &apos;nı kabul etmiş olursunuz.
           </p>
         </form>

@@ -8,6 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    const auth = await authenticateRequest(request)
     const resolvedParams = await Promise.resolve(params)
     const requestData = await prisma.request.findUnique({
       where: { id: resolvedParams.id },
@@ -39,6 +40,7 @@ export async function GET(
             category: true,
           },
         },
+        category: true,
         messages: {
           include: {
             sender: {
@@ -87,6 +89,22 @@ export async function GET(
       )
     }
 
+    // Yetki kontrolü: Customer kendi talebini, Provider ise tüm talepleri görebilir
+    if (auth) {
+      const isCustomer = requestData.customerId === auth.userId
+      const isProvider = auth.userRole === 'PROVIDER'
+      const isAdmin = auth.userRole === 'ADMIN'
+
+      const canView = isCustomer || isProvider || isAdmin
+
+      if (!canView) {
+        return NextResponse.json(
+          { error: 'Bu talebi görüntüleme yetkiniz yok' },
+          { status: 403 }
+        )
+      }
+    }
+
     return NextResponse.json({ data: requestData })
   } catch (error: any) {
     console.error('Get request error:', error)
@@ -112,7 +130,7 @@ export async function PATCH(
 
     const resolvedParams = await Promise.resolve(params)
     const body = await request.json()
-    const { providerId, status, title, description, budget, location } = body
+    const { providerId, categoryId, status, title, description, budget, location } = body
 
     // Request'i bul
     const requestData = await prisma.request.findUnique({
@@ -142,6 +160,7 @@ export async function PATCH(
     if (description !== undefined && isCustomer) updateData.description = description
     if (budget !== undefined && isCustomer) updateData.budget = budget
     if (location !== undefined && isCustomer) updateData.location = location
+    if (categoryId !== undefined && isCustomer) updateData.categoryId = categoryId
     if (providerId !== undefined && isProvider) updateData.providerId = providerId
     if (status !== undefined) {
       // Status güncellemesi için yetki kontrolü
@@ -195,6 +214,7 @@ export async function PATCH(
             category: true,
           },
         },
+        category: true,
       },
     })
 

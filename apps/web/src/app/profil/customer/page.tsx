@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { useRequestsStore } from '@/store/useRequestsStore'
 import { useReviewsStore } from '@/store/useReviewsStore'
 import MessagesList from '@/components/MessagesList'
+import CustomerRequestsList from '@/components/CustomerRequestsList'
 
 export default function CustomerProfilePage() {
   const router = useRouter()
@@ -18,8 +19,12 @@ export default function CustomerProfilePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated) {
       router.push('/login')
+      return
+    }
+
+    if (!user?.id) {
       return
     }
 
@@ -27,10 +32,8 @@ export default function CustomerProfilePage() {
       setLoading(true)
       try {
         await fetchProfile()
-        if (user.id) {
-          await fetchRequests({ customerId: user.id })
-          await fetchReviews({ requestId: undefined }) // Customer'ın verdiği reviews
-        }
+        await fetchRequests({ customerId: user.id })
+        await fetchReviews({ requestId: undefined }) // Customer'ın verdiği reviews
       } catch (error) {
         console.error('Error loading profile data:', error)
       } finally {
@@ -39,7 +42,8 @@ export default function CustomerProfilePage() {
     }
 
     loadData()
-  }, [isAuthenticated, user, fetchProfile, fetchRequests, fetchReviews, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.id])
 
   if (loading) {
     return (
@@ -138,31 +142,7 @@ export default function CustomerProfilePage() {
           </div>
 
           {/* Requests Section */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Taleplerim</h2>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                + Yeni Talep Oluştur
-              </button>
-            </div>
-            {requests.length > 0 ? (
-              <div className="space-y-4">
-                {requests.map((request) => (
-                  <RequestCard key={request.id} request={request as RequestWithRelations} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p className="text-gray-600 text-lg mb-4">Henüz talep oluşturmadınız</p>
-                <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                  İlk Talebinizi Oluşturun
-                </button>
-              </div>
-            )}
-          </div>
+          <CustomerRequestsList requests={requests as RequestWithRelations[]} />
 
           {/* Reviews Section */}
           <div className="bg-white rounded-2xl shadow-xl p-6">
@@ -219,70 +199,6 @@ function StatCard({ title, value, icon, color }: { title: string; value: string 
       </div>
       <h3 className="text-gray-600 text-sm font-medium mb-1">{title}</h3>
       <p className="text-3xl font-bold text-gray-900">{value}</p>
-    </div>
-  )
-}
-
-// Request Card Component
-function RequestCard({ request }: { request: RequestWithRelations }) {
-  const router = useRouter()
-  const statusColors: Record<RequestStatus, string> = {
-    [RequestStatus.PENDING]: 'bg-yellow-100 text-yellow-700',
-    [RequestStatus.ACCEPTED]: 'bg-blue-100 text-blue-700',
-    [RequestStatus.IN_PROGRESS]: 'bg-purple-100 text-purple-700',
-    [RequestStatus.COMPLETED]: 'bg-green-100 text-green-700',
-    [RequestStatus.CANCELLED]: 'bg-red-100 text-red-700'
-  }
-
-  const statusLabels: Record<RequestStatus, string> = {
-    [RequestStatus.PENDING]: 'Beklemede',
-    [RequestStatus.ACCEPTED]: 'Kabul Edildi',
-    [RequestStatus.IN_PROGRESS]: 'Devam Ediyor',
-    [RequestStatus.COMPLETED]: 'Tamamlandı',
-    [RequestStatus.CANCELLED]: 'İptal Edildi'
-  }
-
-  return (
-    <div className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">{request.title}</h3>
-          <p className="text-gray-600 text-sm line-clamp-2">{request.description}</p>
-        </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[request.status] || 'bg-gray-100 text-gray-700'}`}>
-          {statusLabels[request.status] || request.status}
-        </span>
-      </div>
-      <div className="flex items-center justify-between text-sm text-gray-600">
-        <div className="flex items-center gap-4">
-          {request.budget && (
-            <span className="font-semibold text-gray-900">{request.budget.toLocaleString('tr-TR')} ₺</span>
-          )}
-          {request.location && (
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {request.location}
-            </span>
-          )}
-        </div>
-        <span className="text-gray-500">
-          {new Date(request.createdAt).toLocaleDateString('tr-TR')}
-        </span>
-      </div>
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          onClick={() => router.push(`/profil/talepler/${request.id}`)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          Mesajlar
-        </button>
-      </div>
     </div>
   )
 }

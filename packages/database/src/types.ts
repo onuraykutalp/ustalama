@@ -51,6 +51,7 @@ export interface User {
   balance: number
   cardUserKey: string | null
   isPremium: boolean
+  premiumExpiresAt?: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -93,6 +94,7 @@ export interface Request {
   customerId: string
   providerId: string | null
   serviceId: string | null
+  categoryId?: string | null
   title: string
   description: string
   status: RequestStatus
@@ -187,6 +189,7 @@ export interface ProviderProfileWithRelations extends ProviderProfile {
 
 export interface CategoryWithRelations extends Category {
   services?: Service[]
+  requests?: Request[]
 }
 
 export interface ServiceWithRelations extends Service {
@@ -199,6 +202,7 @@ export interface RequestWithRelations extends Request {
   customer?: User
   provider?: ProviderProfileWithRelations
   service?: Service
+  category?: Category
   messages?: Message[]
   reviews?: Review[]
 }
@@ -281,6 +285,7 @@ export interface CreateRequestDto {
   customerId: string
   providerId?: string | null
   serviceId?: string | null
+  categoryId?: string | null
   title: string
   description: string
   status?: RequestStatus
@@ -291,6 +296,7 @@ export interface CreateRequestDto {
 export interface UpdateRequestDto {
   providerId?: string | null
   serviceId?: string | null
+  categoryId?: string | null
   title?: string
   description?: string
   status?: RequestStatus
@@ -328,6 +334,7 @@ export interface PublicUser {
   avatar: string | null
   balance: number
   isPremium: boolean
+  premiumExpiresAt?: string | null
   createdAt: Date
   updatedAt: Date
 }

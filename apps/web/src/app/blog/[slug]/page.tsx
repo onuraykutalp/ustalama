@@ -1,6 +1,6 @@
 import BlogDetailClient from './BlogDetailClient'
 
-// Generate static params for static export
+// Generate static params for blog posts
 export function generateStaticParams() {
   return [
     { slug: 'ev-temizligi-ipuclari' },
@@ -12,6 +12,11 @@ export function generateStaticParams() {
   ]
 }
 
-export default function BlogDetailPage({ params }: { params: { slug: string } }) {
-  return <BlogDetailClient slug={params.slug} />
+export default async function BlogDetailPage({
+  params
+}: {
+  params: Promise<{ slug: string }> | { slug: string }
+}) {
+  const resolvedParams = await Promise.resolve(params)
+  return <BlogDetailClient slug={resolvedParams.slug} />
 }

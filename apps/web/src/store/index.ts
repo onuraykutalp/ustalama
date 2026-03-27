@@ -10,4 +10,5 @@ export { useMessagesStore } from './useMessagesStore'
 export { useReviewsStore } from './useReviewsStore'
 export { useStore } from './useStore'
 export { useAdminStore } from './useAdminStore'
+export { usePaymentStore } from './usePaymentStore'
 

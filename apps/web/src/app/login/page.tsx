@@ -120,9 +120,13 @@ export default function LoginPage() {
             </div>
 
             <div className="text-sm">
-              <Link href="/sifre-sifirla" className="font-medium text-blue-600 hover:text-blue-500">
+              <button
+                type="button"
+                onClick={() => alert('Bu sayfa yakında eklenecek')}
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
                 Şifremi unuttum
-              </Link>
+              </button>
             </div>
           </div>
 

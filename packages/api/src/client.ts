@@ -60,7 +60,22 @@ export class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
-    
+
+    // Token yoksa localStorage'dan kontrol et (browser ortamında)
+    if (!this.token && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('auth-storage')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (parsed.state?.token) {
+            this.token = parsed.state.token
+          }
+        }
+      } catch (e) {
+        // Ignore parse errors (SSR safety)
+      }
+    }
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -76,14 +91,27 @@ export class ApiClient {
         headers,
       })
 
-      const data = await response.json()
+      let data
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json()
+      } else {
+        const text = await response.text()
+        data = { error: text ? 'Invalid response format' : 'Empty response' }
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`)
+        throw {
+          error: data.error || `HTTP error! status: ${response.status}`,
+          status: response.status,
+        } as ApiError
       }
 
       return data
     } catch (error: any) {
+      if (error.error && error.status !== undefined) {
+        throw error
+      }
       throw {
         error: error.message || 'Bir hata oluştu',
         status: error.status,

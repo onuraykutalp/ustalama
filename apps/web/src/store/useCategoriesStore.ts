@@ -1,17 +1,17 @@
 import { create } from 'zustand'
 import { categoriesApi } from '@talepo/api'
-import type { Category } from '@talepo/database'
+import type { CategoryWithRelations } from '@talepo/database'
 
 interface CategoriesState {
-  categories: Category[]
-  selectedCategory: Category | null
+  categories: CategoryWithRelations[]
+  selectedCategory: CategoryWithRelations | null
   loading: boolean
   error: string | null
-  
+
   // Actions
-  fetchCategories: () => Promise<void>
-  getCategoryBySlug: (slug: string) => Promise<Category | null>
-  setSelectedCategory: (category: Category | null) => void
+  fetchCategories: (params?: { hasServices?: boolean }) => Promise<void>
+  getCategoryBySlug: (slug: string) => Promise<CategoryWithRelations | null>
+  setSelectedCategory: (category: CategoryWithRelations | null) => void
   clearError: () => void
 }
 
@@ -20,16 +20,18 @@ export const useCategoriesStore = create<CategoriesState>()((set, get) => ({
   selectedCategory: null,
   loading: false,
   error: null,
-  
-  fetchCategories: async () => {
+
+  fetchCategories: async (params) => {
     set({ loading: true, error: null })
     try {
-      const categories = await categoriesApi.getAll()
-      set({ categories, loading: false })
+      const categories = await categoriesApi.getAll(params)
+      set({ categories, loading: false, error: null })
     } catch (error: any) {
-      set({ 
-        error: error.error || 'Kategoriler yüklenirken bir hata oluştu',
-        loading: false 
+      const errorMessage = error?.error || error?.message || 'Kategoriler yüklenirken bir hata oluştu'
+      set({
+        error: errorMessage,
+        loading: false,
+        categories: []
       })
     }
   },

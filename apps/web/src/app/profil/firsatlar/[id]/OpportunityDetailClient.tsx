@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { requestsApi } from '@talepo/api'
+import { useProposalsStore } from '@/store/useProposalsStore'
+import type { RequestWithRelations } from '@talepo/database'
 
-// Dummy data - API'den gelecek
+// Fallback dummy data - used when API returns no results
 const dummyOpportunities: Record<string, any> = {
   '1': {
     id: '1',
@@ -235,8 +238,11 @@ Yıllık bakım sözleşmesi yapılabilir. Düzenli olarak yılda 2-3 kez bakım
 
 export default function OpportunityDetailClient({ id }: { id: string }) {
   const router = useRouter()
-  const [opportunity, setOpportunity] = useState<any>(null)
-  const [showProposalForm, setShowProposalForm] = useState(true) // Varsayılan olarak açık
+  const { createProposal, loading: proposalLoading } = useProposalsStore()
+  const [opportunity, setOpportunity] = useState<RequestWithRelations | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [showProposalForm, setShowProposalForm] = useState(true)
+  const [offerSubmitted, setOfferSubmitted] = useState(false)
   const [proposalData, setProposalData] = useState({
     price: '',
     message: '',
@@ -245,11 +251,34 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   })
 
   useEffect(() => {
-    // Simulate API call
-    const opp = dummyOpportunities[id]
-    if (opp) {
-      setOpportunity(opp)
+    const fetchOpportunity = async () => {
+      try {
+        setLoading(true)
+        const data = await requestsApi.getById(id)
+        if (data) {
+          setOpportunity(data as RequestWithRelations)
+          if (data.providerId) {
+            setShowProposalForm(false)
+            setOfferSubmitted(true)
+          }
+        } else {
+          // Fallback to dummy data
+          const opp = dummyOpportunities[id]
+          if (opp) {
+            setOpportunity(opp)
+          }
+        }
+      } catch (error) {
+        // Fallback to dummy data on error
+        const opp = dummyOpportunities[id]
+        if (opp) {
+          setOpportunity(opp)
+        }
+      } finally {
+        setLoading(false)
+      }
     }
+    fetchOpportunity()
   }, [id])
 
   const formatTimeAgo = (date: Date) => {
@@ -272,28 +301,43 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
 
   const handleSubmitProposal = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!proposalData.price || !proposalData.message || !proposalData.estimatedDays) {
       alert('Lütfen tüm alanları doldurun!')
       return
     }
 
     setProposalData({ ...proposalData, isProcessing: true })
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    setProposalData({
-      price: '',
-      message: '',
-      estimatedDays: '',
-      isProcessing: false
-    })
-    setShowProposalForm(false)
-    alert('Teklifiniz başarıyla gönderildi! Müşteriye bildirim gönderildi.')
+
+    try {
+      const result = await createProposal(id)
+      if (result) {
+        // Refresh opportunity data
+        try {
+          const updatedData = await requestsApi.getById(id)
+          if (updatedData) {
+            setOpportunity(updatedData as RequestWithRelations)
+          }
+        } catch {}
+        setProposalData({
+          price: '',
+          message: '',
+          estimatedDays: '',
+          isProcessing: false
+        })
+        setShowProposalForm(false)
+        setOfferSubmitted(true)
+      } else {
+        alert('Teklif verilirken bir hata oluştu. Lütfen tekrar deneyin.')
+        setProposalData({ ...proposalData, isProcessing: false })
+      }
+    } catch (error) {
+      alert('Teklif verilirken bir hata oluştu. Lütfen tekrar deneyin.')
+      setProposalData({ ...proposalData, isProcessing: false })
+    }
   }
 
-  if (!opportunity) {
+  if (loading || !opportunity) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
@@ -345,12 +389,9 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
                       <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                        {opportunity.category}
+                        {opportunity.category?.name || opportunity.service?.category?.name || opportunity.category || 'Genel'}
                       </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${urgencyColors[opportunity.urgency] || urgencyColors.medium}`}>
-                        {urgencyLabels[opportunity.urgency] || urgencyLabels.medium}
-                      </span>
-                      <span className="text-sm text-gray-500">{formatTimeAgo(opportunity.createdAt)}</span>
+                      <span className="text-sm text-gray-500">{formatTimeAgo(new Date(opportunity.createdAt))}</span>
                     </div>
                     <h1 className="text-3xl font-bold text-gray-900 mb-3">{opportunity.title}</h1>
                     <div className="flex items-center gap-4 text-gray-600">
@@ -573,10 +614,10 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    disabled={proposalData.isProcessing || !proposalData.price || !proposalData.message || !proposalData.estimatedDays}
+                    disabled={proposalData.isProcessing || proposalLoading || !proposalData.price || !proposalData.message || !proposalData.estimatedDays}
                     className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-bold text-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {proposalData.isProcessing ? (
+                    {proposalData.isProcessing || proposalLoading ? (
                       <>
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Gönderiliyor...
@@ -586,10 +627,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
-                        Teklifi Gönder 
-                        <span className="ml-2 text-sm font-medium bg-white bg-opacity-20 rounded px-2 py-0.5">
-                          (49.99₺)
-                        </span>
+                        Teklif Ver
                       </>
                     )}
                   </button>
@@ -604,10 +642,10 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <div className="text-center">
                 <div className="text-4xl font-bold text-gray-900 mb-2">
-                  {opportunity.budget.toLocaleString('tr-TR')} ₺
+                  {opportunity.budget ? opportunity.budget.toLocaleString('tr-TR') : 'Belirtilmemiş'} ₺
                 </div>
                 <p className="text-gray-600 mb-6">Bütçe</p>
-                {!showProposalForm && (
+                {!showProposalForm && !offerSubmitted && (
                   <button
                     onClick={() => setShowProposalForm(true)}
                     className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
@@ -623,30 +661,42 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
               <h3 className="text-lg font-bold text-gray-900 mb-4">Müşteri Bilgileri</h3>
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-2xl font-bold">
-                  {opportunity.customer?.name?.[0] || 'U'}
+                  {opportunity.customer?.name?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-semibold text-gray-900">{opportunity.customer?.name || 'Müşteri'}</h4>
-                    {opportunity.customer?.verified && (
-                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    )}
                   </div>
-                  <div className="flex items-center gap-1 mb-2">
-                    <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.363 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    <span className="text-sm font-medium text-gray-900">{opportunity.customer?.rating || 0}</span>
-                    <span className="text-sm text-gray-500">({opportunity.customer?.totalReviews || 0} değerlendirme)</span>
-                  </div>
-                  <p className="text-sm text-gray-500">Üye: {opportunity.customer?.memberSince || 'Bilinmiyor'}</p>
+                  <p className="text-sm text-gray-500">{opportunity.customer?.email}</p>
                 </div>
               </div>
-              <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-                Profili Görüntüle
-              </button>
+
+              {/* Show phone number after offer is submitted */}
+              {offerSubmitted && opportunity.customer?.phone && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span className="text-sm font-semibold text-green-900">Telefon Numarası</span>
+                  </div>
+                  <a
+                    href={`tel:${opportunity.customer.phone}`}
+                    className="text-lg font-bold text-green-700 hover:text-green-800 transition-colors"
+                  >
+                    {opportunity.customer.phone}
+                  </a>
+                  <p className="text-xs text-green-700 mt-1">Teklif verdiğiniz için müşterinin telefon numarasını görebilirsiniz</p>
+                </div>
+              )}
+
+              {!offerSubmitted && (
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-600 text-center">
+                    Teklif verdikten sonra müşterinin telefon numarasını görebilirsiniz
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Details */}
@@ -655,17 +705,17 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Yayınlanma</p>
-                  <p className="font-medium text-gray-900">{formatTimeAgo(opportunity.createdAt)}</p>
+                  <p className="font-medium text-gray-900">{formatTimeAgo(new Date(opportunity.createdAt))}</p>
                 </div>
-                {opportunity.deadline && (
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Son Başvuru</p>
-                    <p className="font-medium text-gray-900">{formatDate(opportunity.deadline)}</p>
-                  </div>
-                )}
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Teklif Sayısı</p>
-                  <p className="font-medium text-gray-900">{opportunity.proposalsCount} teklif</p>
+                  <p className="text-sm text-gray-600 mb-1">Durum</p>
+                  <p className="font-medium text-gray-900">
+                    {opportunity.status === 'PENDING' ? 'Beklemede' :
+                     opportunity.status === 'ACCEPTED' ? 'Kabul Edildi' :
+                     opportunity.status === 'IN_PROGRESS' ? 'Devam Ediyor' :
+                     opportunity.status === 'COMPLETED' ? 'Tamamlandı' :
+                     opportunity.status === 'CANCELLED' ? 'İptal Edildi' : opportunity.status}
+                  </p>
                 </div>
               </div>
             </div>

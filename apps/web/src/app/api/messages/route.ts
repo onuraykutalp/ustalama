@@ -35,21 +35,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Customer veya Provider olmalı
-    const isAuthorized =
-      requestData.customerId === auth.userId ||
-      (requestData.providerId &&
-        (await prisma.providerProfile.findFirst({
-          where: {
-            id: requestData.providerId,
-            userId: auth.userId,
-          },
-        })))
+    const isCustomer = requestData.customerId === auth.userId
 
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { error: 'Bu mesajları görüntüleme yetkiniz yok' },
-        { status: 403 }
+    if (!isCustomer) {
+      // Customer değilse, Provider kontrolü yap
+      const providerProfile = await prisma.providerProfile.findFirst({
+        where: { userId: auth.userId },
+      })
+
+      // Provider ise: henüz provider atanmamış veya kendi teklif verdiği request
+      const isProvider = !!providerProfile && (
+        !requestData.providerId ||
+        (requestData.providerId === providerProfile.id)
       )
+
+      if (!isProvider) {
+        return NextResponse.json(
+          { error: 'Bu mesajları görüntüleme yetkiniz yok' },
+          { status: 403 }
+        )
+      }
     }
 
     const messages = await prisma.message.findMany({
@@ -112,21 +117,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Customer veya Provider olmalı
-    const isAuthorized =
-      requestData.customerId === auth.userId ||
-      (requestData.providerId &&
-        (await prisma.providerProfile.findFirst({
-          where: {
-            id: requestData.providerId,
-            userId: auth.userId,
-          },
-        })))
+    const isCustomer = requestData.customerId === auth.userId
 
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { error: 'Bu talebe mesaj gönderme yetkiniz yok' },
-        { status: 403 }
+    if (!isCustomer) {
+      // Customer değilse, Provider kontrolü yap
+      const providerProfile = await prisma.providerProfile.findFirst({
+        where: { userId: auth.userId },
+      })
+
+      // Provider ise: henüz provider atanmamış veya kendi teklif verdiği request
+      const isProvider = !!providerProfile && (
+        !requestData.providerId ||
+        (requestData.providerId === providerProfile.id)
       )
+
+      if (!isProvider) {
+        return NextResponse.json(
+          { error: 'Bu talebe mesaj gönderme yetkiniz yok' },
+          { status: 403 }
+        )
+      }
     }
 
     const message = await prisma.message.create({

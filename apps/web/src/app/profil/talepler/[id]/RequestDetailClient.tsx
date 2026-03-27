@@ -1,21 +1,49 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { RequestStatus } from '@talepo/database'
 import type { RequestWithRelations, MessageWithRelations } from '@talepo/database'
-import { dummyProviderUser, dummyCustomerUser } from '@/data/dummyData'
+import { useAuthStore } from '@/store/useAuthStore'
+import { useRequestsStore } from '@/store/useRequestsStore'
+import { useMessagesStore } from '@/store/useMessagesStore'
 
 export default function RequestDetailClient({ id }: { id: string }) {
   const router = useRouter()
+  const { user } = useAuthStore()
+  const { getRequestById, loading: requestLoading } = useRequestsStore()
+  const { messages: messagesByRequest, fetchMessages, sendMessage, loading: messagesLoading } = useMessagesStore()
+  const [request, setRequest] = useState<RequestWithRelations | null>(null)
   const [newMessage, setNewMessage] = useState('')
 
-  // Find request from dummy data
-  const allRequests = [
-    ...(dummyProviderUser.providerProfile?.requests || []),
-    ...(dummyCustomerUser.customerRequests || [])
-  ]
-  const request = allRequests.find(r => r.id === id) as RequestWithRelations | undefined
+  // Fetch request data
+  useEffect(() => {
+    const loadRequest = async () => {
+      const requestData = await getRequestById(id)
+      if (requestData) {
+        setRequest(requestData as RequestWithRelations)
+      }
+    }
+    loadRequest()
+  }, [id, getRequestById])
+
+  // Fetch messages
+  useEffect(() => {
+    if (id) {
+      fetchMessages(id)
+    }
+  }, [id, fetchMessages])
+
+  if (requestLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-600">Talep yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!request) {
     return (
@@ -33,13 +61,12 @@ export default function RequestDetailClient({ id }: { id: string }) {
     )
   }
 
-  const messages = request.messages || []
+  const messages = (messagesByRequest[id] || []) as MessageWithRelations[]
   const customer = request.customer
   const provider = request.provider
-  
+
   // Determine current user ID (for message display)
-  // In a real app, this would come from authentication
-  const currentUserId = customer?.id || provider?.userId || ''
+  const currentUserId = user?.id || ''
 
   const statusColors: Record<RequestStatus, string> = {
     [RequestStatus.PENDING]: 'bg-yellow-100 text-yellow-700',
@@ -57,22 +84,36 @@ export default function RequestDetailClient({ id }: { id: string }) {
     [RequestStatus.CANCELLED]: 'İptal Edildi'
   }
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
-    // In a real app, this would send the message via API
-    setNewMessage('')
+    if (!newMessage.trim() || !user) return
+
+    try {
+      const result = await sendMessage({
+        requestId: id,
+        content: newMessage.trim(),
+      })
+      if (result) {
+        setNewMessage('')
+      } else {
+        alert('Mesaj gönderilemedi. Lütfen tekrar deneyin.')
+      }
+    } catch (error: any) {
+      const errorMsg = error?.error || error?.message || 'Mesaj gönderilirken bir hata oluştu'
+      alert(`Mesaj gönderilemedi: ${errorMsg}`)
+    }
   }
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string) => {
     const now = new Date()
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-    
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000)
+
     if (diffInSeconds < 60) return 'Şimdi'
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} dk önce`
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} sa önce`
     if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} gün önce`
-    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    return dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   }
 
   return (
@@ -101,6 +142,16 @@ export default function RequestDetailClient({ id }: { id: string }) {
               <h2 className="text-xl font-bold text-gray-900 mb-4">Talep Detayları</h2>
               
               <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Başlık</label>
+                  <p className="mt-1 text-gray-900 font-semibold">{request.title}</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Açıklama</label>
+                  <p className="mt-1 text-gray-900">{request.description}</p>
+                </div>
+
                 <div>
                   <label className="text-sm font-medium text-gray-600">Durum</label>
                   <div className="mt-1">
@@ -144,10 +195,10 @@ export default function RequestDetailClient({ id }: { id: string }) {
                   </div>
                 )}
 
-                {provider && (
+                {provider && provider.user && (
                   <div>
                     <label className="text-sm font-medium text-gray-600">Hizmet Sağlayıcı</label>
-                    <p className="mt-1 text-gray-900">{provider.user?.name || 'Bilinmiyor'}</p>
+                    <p className="mt-1 text-gray-900">{provider.user.name || provider.user.email || 'Bilinmiyor'}</p>
                   </div>
                 )}
               </div>
@@ -165,15 +216,49 @@ export default function RequestDetailClient({ id }: { id: string }) {
 
               {/* Messages List */}
               <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
-                {messages.length > 0 ? (
-                  messages.map((message: MessageWithRelations) => {
+                {messagesLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2"></div>
+                      <p className="text-sm text-gray-600">Mesajlar yükleniyor...</p>
+                    </div>
+                  </div>
+                ) : messages.length > 0 ? (
+                  messages.map((message: MessageWithRelations, index) => {
                     const isMyMessage = message.senderId === currentUserId
+                    const prevMessage = index > 0 ? messages[index - 1] : null
+                    const showAvatar = !prevMessage ||
+                      prevMessage.senderId !== message.senderId ||
+                      (new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) > 5 * 60 * 1000
+
                     return (
                       <div
                         key={message.id}
                         className={`flex gap-3 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}
                       >
+                        {!isMyMessage && (
+                          <div className={`flex-shrink-0 ${showAvatar ? 'w-8 h-8' : 'w-8'}`}>
+                            {showAvatar && message.sender ? (
+                              message.sender.avatar ? (
+                                <img
+                                  src={message.sender.avatar}
+                                  alt={message.sender.name || ''}
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                                  {(message.sender.name || message.sender.email || 'U')[0]}
+                                </div>
+                              )
+                            ) : null}
+                          </div>
+                        )}
                         <div className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'} max-w-[70%]`}>
+                          {showAvatar && !isMyMessage && message.sender && (
+                            <span className="text-xs text-gray-500 mb-1 px-2">
+                              {message.sender.name || message.sender.email || 'Bilinmeyen'}
+                            </span>
+                          )}
                           <div
                             className={`rounded-2xl px-4 py-2 ${
                               isMyMessage
@@ -183,7 +268,7 @@ export default function RequestDetailClient({ id }: { id: string }) {
                           >
                             <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                           </div>
-                          <span className="text-xs text-gray-500 mt-1">{formatTime(new Date(message.createdAt))}</span>
+                          <span className="text-xs text-gray-500 mt-1">{formatTime(message.createdAt)}</span>
                         </div>
                       </div>
                     )
@@ -221,7 +306,7 @@ export default function RequestDetailClient({ id }: { id: string }) {
                   </div>
                   <button
                     type="submit"
-                    disabled={!newMessage.trim()}
+                    disabled={!newMessage.trim() || messagesLoading}
                     className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

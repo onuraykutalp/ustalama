@@ -1,6 +1,13 @@
+'use client'
+
 import Link from 'next/link'
 
 export default function Footer() {
+  const handleComingSoon = (e: React.MouseEvent) => {
+    e.preventDefault()
+    alert('Bu sayfa yakında eklenecek')
+  }
+
   return (
     <footer className="bg-gray-900 text-gray-300">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -48,19 +55,19 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/kategoriler" className="hover:text-white transition-colors">
+                <Link href="/categories" className="hover:text-white transition-colors">
                   Kategoriler
                 </Link>
               </li>
               <li>
-                <Link href="/hizmet-verenler" className="hover:text-white transition-colors">
+                <a href="#" onClick={handleComingSoon} className="hover:text-white transition-colors">
                   Hizmet Sağlayıcılar
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="/nasil-calisir" className="hover:text-white transition-colors">
+                <a href="#" onClick={handleComingSoon} className="hover:text-white transition-colors">
                   Nasıl Çalışır?
-                </Link>
+                </a>
               </li>
             </ul>
           </div>
@@ -70,24 +77,24 @@ export default function Footer() {
             <h3 className="text-white font-semibold mb-4">Destek</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/iletisim" className="hover:text-white transition-colors">
+                <a href="#" onClick={handleComingSoon} className="hover:text-white transition-colors">
                   İletişim
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="/sss" className="hover:text-white transition-colors">
+                <a href="#" onClick={handleComingSoon} className="hover:text-white transition-colors">
                   Sık Sorulan Sorular
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="/gizlilik" className="hover:text-white transition-colors">
+                <a href="#" onClick={handleComingSoon} className="hover:text-white transition-colors">
                   Gizlilik Politikası
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="/kullanim-kosullari" className="hover:text-white transition-colors">
+                <a href="#" onClick={handleComingSoon} className="hover:text-white transition-colors">
                   Kullanım Koşulları
-                </Link>
+                </a>
               </li>
             </ul>
           </div>

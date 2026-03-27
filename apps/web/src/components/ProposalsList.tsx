@@ -15,106 +15,12 @@ export default function ProposalsList() {
     fetchProposals()
   }, [fetchProposals])
 
-  // Dummy data for proposals (fallback)
-  const dummyProposals = [
-    {
-      id: '1',
-      opportunityId: '1',
-      opportunityTitle: 'Ev Temizliği Hizmeti',
-      customerName: 'Ayşe Yılmaz',
-      customerAvatar: null,
-      price: 2500,
-      estimatedDays: 7,
-      message: 'Merhaba, bu iş için 7 yıllık deneyimim var. Çevre dostu ürünler kullanıyorum ve referanslarımı paylaşabilirim. Haftalık düzenli temizlik hizmeti sunuyorum.',
-      status: 'pending',
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      location: 'Kadıköy, İstanbul',
-      category: 'Temizlik',
-      opportunityBudget: 2500
-    },
-    {
-      id: '2',
-      opportunityId: '2',
-      opportunityTitle: 'Bebek Bakıcısı',
-      customerName: 'Mehmet Demir',
-      customerAvatar: null,
-      price: 15000,
-      estimatedDays: 30,
-      message: '6 yıllık bebek bakıcılığı deneyimim var. İlk yardım sertifikam mevcut ve referanslarımı paylaşabilirim. Sabırlı ve sevecen biriyim.',
-      status: 'accepted',
-      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      location: 'Beşiktaş, İstanbul',
-      category: 'Bakım',
-      opportunityBudget: 15000
-    },
-    {
-      id: '3',
-      opportunityId: '3',
-      opportunityTitle: 'Elektrik Tesisat Tamiri',
-      customerName: 'Zeynep Kaya',
-      customerAvatar: null,
-      price: 800,
-      estimatedDays: 1,
-      message: 'Lisanslı elektrikçiyim, 10 yıllık deneyimim var. Acil müdahale yapabilirim. Bugün içinde gelebilirim.',
-      status: 'rejected',
-      createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-      location: 'Ümraniye, İstanbul',
-      category: 'Tamir',
-      opportunityBudget: 800
-    },
-    {
-      id: '4',
-      opportunityId: '4',
-      opportunityTitle: 'Bahçe Düzenleme',
-      customerName: 'Ali Çelik',
-      customerAvatar: null,
-      price: 5000,
-      estimatedDays: 14,
-      message: 'Peyzaj mimarıyım, 8 yıllık deneyimim var. Sulama sistemi kurulumu konusunda uzmanım. Referanslarımı paylaşabilirim.',
-      status: 'pending',
-      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      location: 'Ataşehir, İstanbul',
-      category: 'Bahçıvanlık',
-      opportunityBudget: 5000
-    },
-    {
-      id: '5',
-      opportunityId: '5',
-      opportunityTitle: 'Özel Ders (Matematik)',
-      customerName: 'Fatma Öz',
-      customerAvatar: null,
-      price: 2000,
-      estimatedDays: 90,
-      message: 'Matematik öğretmeniyim, 12 yıllık deneyimim var. Lise müfredatına hakimim ve öğrencilerle iyi iletişim kurabiliyorum.',
-      status: 'accepted',
-      createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      location: 'Şişli, İstanbul',
-      category: 'Eğitim',
-      opportunityBudget: 2000
-    },
-    {
-      id: '6',
-      opportunityId: '6',
-      opportunityTitle: 'Klima Bakımı ve Temizliği',
-      customerName: 'Can Yücel',
-      customerAvatar: null,
-      price: 1200,
-      estimatedDays: 3,
-      message: 'Klima servis teknisyeniyim, sertifikalıyım. 3 adet klimanın bakımını yapabilirim. Garanti veriyorum.',
-      status: 'withdrawn',
-      createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-      location: 'Bakırköy, İstanbul',
-      category: 'Tamir',
-      opportunityBudget: 1200
-    }
-  ]
-
   // Proposals'ı display formatına çevir
   const displayProposals = useMemo(() => {
     return proposals.map((proposal) => ({
       id: proposal.id,
-      opportunityId: proposal.id,
-      opportunityTitle: proposal.title,
+      requestId: proposal.id,
+      title: proposal.title,
       customerName: proposal.customer?.name || 'İsimsiz',
       customerAvatar: proposal.customer?.avatar || null,
       price: proposal.budget || 0,
@@ -124,17 +30,16 @@ export default function ProposalsList() {
       createdAt: new Date(proposal.createdAt),
       location: proposal.location || 'Konum belirtilmemiş',
       category: proposal.service?.category?.name || 'Genel',
-      opportunityBudget: proposal.budget || 0
+      budget: proposal.budget || 0
     }))
   }, [proposals])
 
   // Filter and sort proposals
   const filteredProposals = useMemo(() => {
-    const props = displayProposals.length > 0 ? displayProposals : dummyProposals
-    return props
+    return displayProposals
       .filter(proposal => {
         const matchesStatus = selectedStatus === 'all' || proposal.status === selectedStatus
-        const matchesSearch = proposal.opportunityTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        const matchesSearch = proposal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                              proposal.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                              proposal.message.toLowerCase().includes(searchQuery.toLowerCase())
         return matchesStatus && matchesSearch
@@ -291,10 +196,10 @@ function ProposalCard({
               <span className="text-sm text-gray-500">{formatTimeAgo(proposal.createdAt)}</span>
             </div>
             <Link
-              href={`/profil/firsatlar/${proposal.opportunityId}`}
+              href={`/profil/talepler/${proposal.requestId}`}
               className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors block"
             >
-              {proposal.opportunityTitle}
+              {proposal.title}
             </Link>
             <div className="flex items-center gap-4 text-gray-600 text-sm">
               <div className="flex items-center gap-2">
@@ -338,9 +243,9 @@ function ProposalCard({
           <div className="bg-blue-50 rounded-lg p-3">
             <p className="text-xs text-gray-600 mb-1">Teklif Fiyatı</p>
             <p className="text-lg font-bold text-blue-600">{proposal.price.toLocaleString('tr-TR')} ₺</p>
-            {proposal.opportunityBudget && (
+            {proposal.budget && proposal.budget !== proposal.price && (
               <p className="text-xs text-gray-500 mt-1">
-                Bütçe: {proposal.opportunityBudget.toLocaleString('tr-TR')} ₺
+                Bütçe: {proposal.budget.toLocaleString('tr-TR')} ₺
               </p>
             )}
           </div>
@@ -353,10 +258,16 @@ function ProposalCard({
         {/* Actions */}
         <div className="flex gap-3">
           <Link
-            href={`/profil/firsatlar/${proposal.opportunityId}`}
-            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors text-center"
+            href={`/profil/talepler/${proposal.requestId || proposal.id}`}
+            className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl text-center"
           >
-            Fırsatı Görüntüle
+            Mesajlaş
+          </Link>
+          <Link
+            href={`/profil/talepler/${proposal.requestId || proposal.id}`}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+          >
+            Detay
           </Link>
           {proposal.status === 'pending' && (
             <button
