@@ -23,6 +23,8 @@ model User {
   cardUserKey String?
   isPremium   Boolean  @default(false)
   premiumExpiresAt DateTime?
+  resetToken       String?
+  resetTokenExpiry DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

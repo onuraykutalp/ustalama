@@ -61,9 +61,6 @@ export default function Header() {
               Premium Hizmet Verenler
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full"></span>
             </Link>
-            <Link href="/how-it-works" className="nav-btn text-gray-900 font-semibold">
-              Nasıl Çalışır?
-            </Link>
             {isAuthenticated && user ? (
               <div className="flex items-center gap-3 ml-6 relative" ref={dropdownRef}>
                 <button
@@ -173,9 +170,6 @@ export default function Header() {
             <Link href="/hizmet-verenler/premium" className="mobile-nav-btn relative" onClick={() => setIsMenuOpen(false)}>
               Premium Hizmet Verenler
               <span className="absolute top-2 right-2 w-2 h-2 bg-yellow-400 rounded-full"></span>
-            </Link>
-            <Link href="/how-it-works" className="mobile-nav-btn" onClick={() => setIsMenuOpen(false)}>
-              Nasıl Çalışır?
             </Link>
             {isAuthenticated && user ? (
               <>
